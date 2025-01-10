@@ -1,0 +1,85 @@
+import pandas as pd
+import yfinance as yf
+from IPython.display import display, HTML
+import ipywidgets as widgets
+import io
+import base64
+import ipywidgets as widgets
+from IPython.display import display, HTML
+
+# Create widgets
+stock_ticker = widgets.Text(
+    value='',
+    description='Stock Ticker:',
+    placeholder='Enter Stock Ticker'
+)
+
+start_date_picker = widgets.DatePicker(
+    description='Start Date',
+    disabled=False
+)
+
+end_date_picker = widgets.DatePicker(
+    description='End Date',
+    disabled=False
+)
+
+fetch_button = widgets.Button(
+    description="Download",
+    button_style="success"
+)
+
+download_link = widgets.HTML(value='')  # Empty HTML widget to display the download link
+
+# Display widgets
+display(stock_ticker, start_date_picker, end_date_picker, fetch_button, download_link)
+
+# Placeholder for the DataFrame
+df = pd.DataFrame()
+
+# Define fetch button click event
+def on_fetch_click(b):
+    global df  # To allow access for download
+    ticker = stock_ticker.value
+    start_date = start_date_picker.value
+    end_date = end_date_picker.value
+
+    if not ticker:
+        print("Please enter a valid stock ticker.")
+    elif not start_date or not end_date:
+        print("Please select both start and end dates.")
+    elif start_date > end_date:
+        print("Invalid range: Start Date is after End Date!")
+    else:
+        # Fetch stock data
+        print(f"Fetching data for {ticker} from {start_date} to {end_date}...")
+        try:
+            df = yf.download(ticker, start=start_date, end=end_date)
+            if df.empty:
+                print(f"No data found for {ticker}. Please check the ticker symbol.")
+                download_link.value = ''
+            else:
+                print("Data fetched successfully!")
+                display(df.head())
+
+                # Generate download link
+                download_link.value = create_download_link(df, f"{ticker}_data.csv")
+        except Exception as e:
+            print(f"Error fetching data: {e}")
+            download_link.value = ''
+
+# Function to create a download link
+def create_download_link(dataframe, filename):
+    # Convert DataFrame to CSV
+    csv_buffer = io.StringIO()
+    dataframe.to_csv(csv_buffer)
+    csv_buffer.seek(0)
+
+    # Encode CSV to Base64
+    b64 = base64.b64encode(csv_buffer.getvalue().encode()).decode()
+    href = f'<a href="data:text/csv;base64,{b64}" download="{filename}">Download {filename}</a>'
+
+    return href
+
+# Link fetch button to its handler
+fetch_button.on_click(on_fetch_click)
